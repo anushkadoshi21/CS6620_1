@@ -149,4 +149,4 @@ However for day-to-day development, just running `pytest` locally is faster.
 
 
 
-Please note: Some content of code (boilerplate and small potion of logic) and documentation has been generated using Claude code AI.
+Please note: Some content of code (boilerplate and small portion of logic) and documentation has been generated using Claude code AI.
