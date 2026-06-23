@@ -1,0 +1,26 @@
+# Use an official lightweight Python runtime as a parent image
+FROM python:3.11-slim
+
+# Prevents Python from writing pyc files to disc
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Prevents Python from buffering stdout and stderr
+ENV PYTHONUNBUFFERED=1
+
+# Set the working directory inside the container
+WORKDIR /code
+
+# Copy only the requirements file first to leverage Docker cache
+COPY requirements.txt .
+
+# Install dependencies without using the cache directory to save space
+RUN pip install --no-cache-dir -r requirements.txt
+
+#copy the application source code into the container
+COPY app ./app
+
+# Copy the tests directory into the container
+COPY tests ./tests
+
+# Command to run the application
+CMD ["pytest", "-v", "tests/test_client_routes.py"]
