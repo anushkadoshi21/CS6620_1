@@ -121,18 +121,56 @@ pytest tests/test_client_flow.py::TestClientLifecycleFlow -v
 
 # a single test
 pytest tests/test_client_flow.py::TestClientLifecycleFlow::test_create_read_update_delete -v
+```
 
+## Run with Docker
+
+The app and its tests are packaged into two separate images so they behave identically on any machine. There are two Dockerfiles and two convenience scripts (in `scripts/`). The scripts `cd` to the repo root themselves, so you can run them from anywhere.
+
+### Run the API
+
+```bash
+bash scripts/run_api.sh
+```
+
+This builds the `Dockerfile.api` image and runs it in the foreground, publishing port `8000`. The API stays up until you stop it with `Ctrl-C`. Once running, open `http://localhost:8000/docs`.
+
+Equivalent manual commands:
+
+```bash
+docker build -f Dockerfile.api -t myapp-api:latest .
+docker run --rm -p 8000:8000 myapp-api:latest
+```
+
+### Run the tests
+
+```bash
+bash scripts/run_tests.sh
+```
+
+This builds the `Dockerfile.tests` image and runs the full `pytest` suite inside the container. The script **exits 0 if all tests pass and non-zero if any test fails** (it propagates pytest's exit code), which is what the CI gate relies on.
+
+Equivalent manual commands:
+
+```bash
+docker build -f Dockerfile.tests -t myapp-tests:latest .
+docker run --rm myapp-tests:latest
+```
 
 ## How tests run in CI (GitHub Actions)
 
-CI is defined in [.github/workflows/ci.yml](.github/workflows/ci.yml). On every **push to `main`** and every **pull request targeting `main`**, GitHub Actions:
+CI is defined in [.github/workflows/ci.yml](.github/workflows/ci.yml). It runs on every **push to `main`**, every **pull request targeting `main`**, and can also be **triggered manually** from the Actions tab (`workflow_dispatch`). On each run, GitHub Actions:
 
 1. Checks out the code.
-2. Sets up Python 3.12.
-3. Installs dependencies from `requirements.txt` (with pip caching).
-4. Runs `pytest -v`.
+2. Runs `bash scripts/run_tests.sh`, which builds the test image and runs the suite in a container. The step fails if any test fails (the script's non-zero exit propagates).
+3. Posts a status summary to Slack — this step runs **always** (on both success and failure) and reports the real outcome (`success` / `failure`), the branch, the commit, and a link to the run.
 
 You can see the run in the **Actions** tab of the GitHub repo. A green check on a PR means the suite passed; a red X blocks the PR.
+
+### Slack notifications
+
+The notify step uses an [incoming webhook](https://api.slack.com/messaging/webhooks). 
+If the secret is absent the workflow still runs the tests; only the Slack step fails to deliver.
 
 ### Running the CI workflow locally (optional)
 
