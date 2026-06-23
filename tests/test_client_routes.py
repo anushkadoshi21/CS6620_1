@@ -32,7 +32,7 @@ class TestGetClient:
 class TestCreateClient:
     def test_creates(self, client, sample_client_payload):
         r = client.post("/clients", json=sample_client_payload)
-        assert r.status_code == 200
+        assert r.status_code == 201
         body = r.json()
         assert body["name"] == sample_client_payload["name"]
         assert "id" in body
