@@ -58,9 +58,11 @@ class ClientService:
         try:
             response = cls._dynamo().get_item(Key={"name": client_name})
             item = response.get("Item")
-            return ClientResponse(**item)
+            if not item:
+                raise ClientNotFoundError("Client not found")
+            return ClientResponse(**item) 
         except ClientError as e:
-            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 raise ClientNotFoundError("Client not found")
             print(f"Error getting client: {e}")
             raise InternalError("Internal server error")
@@ -100,23 +102,35 @@ class ClientService:
         cls, client_name: str, payload: ClientUpdate
     ) -> Optional[ClientResponse]:
         try:
-            existing = cls.get_client(client_name)
-            if existing is None:
-                return None
-            updated=cls._dynamo().put_item(Item=cls.convert_to_decimal( **payload.model_dump()))
-            return updated
+            existing=cls.get_client(client_name)  # Check existence; raises ClientNotFoundError if not found
+            full_item = ClientResponse(
+            **payload.model_dump(), name=client_name
+        ).model_dump()
+            cls._dynamo().put_item(Item=cls.convert_to_decimal(full_item))
+        except ClientNotFoundError:
+            raise
         except ClientError as e:
-            print(f"Error updating client: {e}")
             raise InternalError("Internal server error")
+        try:
+            cls._s3().put_object(
+                Bucket=BUCKET_NAME,
+                Key=client_name,
+                Body=json.dumps(full_item).encode("utf-8"),
+                ContentType="application/json",
+            )
+        except ClientError as e:
+            print(f"Error writing to S3: {e}")
+            cls._dynamo().put_item(Item=cls.convert_to_decimal(existing.model_dump()))  # Rollback DynamoDB write
+            raise InternalError("Internal server error")
+        return ClientResponse(**full_item)
 
     @classmethod
     def delete_client(cls, client_name: str) -> bool:
         try:
             response = cls._dynamo().delete_item(
-                Key={"name": name},
+                Key={"name": client_name},
                 ConditionExpression="attribute_exists(#n)",
-                ExpressionAttributeNames={"#n": "name"},
-                ReturnValues="ALL_OLD",
+                ExpressionAttributeNames={"#n": "name"}, ReturnValues="ALL_OLD",
             )
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
