@@ -11,4 +11,4 @@ awslocal dynamodb create-table \
 echo "Creating S3 bucket 'clients'..."
 awslocal s3 mb s3://clients
 
-echo "Init complete."chmod +x localstack/init/01-create-resources.sh
+echo "Init complete."chmod +x localstack/init/create-resources.sh
