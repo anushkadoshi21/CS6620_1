@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Path, status
 
 from app.models.client import ClientCreate, ClientResponse, ClientUpdate
 from app.services.client_service import ClientService, DuplicateClientError, ClientNotFoundError, InternalError
@@ -19,7 +19,7 @@ def list_clients():
 
 
 @router.get("/{client_name}", response_model=ClientResponse, status_code=status.HTTP_200_OK)
-def get_client(client_name: str): #incorrect parameter type will result in status 422 error
+def get_client(client_name: str = Path(..., min_length=2, pattern=r"^[a-zA-Z-]+$")): #incorrect parameter type will result in status 422 error
     try:
         client = ClientService.get_client(client_name)
     except ClientNotFoundError:
