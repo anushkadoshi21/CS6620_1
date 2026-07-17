@@ -15,7 +15,7 @@ jobs:
 
       - name: Run shell script to run tests
         run: |
-          bash ./scripts/run_tests.sh
+          bash ./scripts/run_apiTestsStack.sh
 
       - name: Notify on slack channel
         if: always()
